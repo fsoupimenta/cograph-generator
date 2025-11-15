@@ -1,0 +1,25 @@
+[project]
+name = "cographgenerator"
+version = "0.1.0"
+description = "A high-performance Python library for generating and manipulating cographs, with canonical structure parsing and graph6 encoding."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Fernando Souza Pimenta" }
+]
+
+keywords = ["cographs", "graph theory", "enumeration", "graph6", "combinatorics"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Intended Audience :: Science/Research"
+]
+
+dependencies = [
+    "numpy>=1.24"
+]
