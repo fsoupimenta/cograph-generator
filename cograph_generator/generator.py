@@ -6,6 +6,7 @@ from typing import List, Iterator
 from cograph_generator.adjacency_g6 import _structure_to_g6_optimized_worker
 from cograph_generator.utils import _generate_all_unique_integer_partitions, _generate_ordered_cartesian_product, \
     _apply_cograph_operator_structure
+from cograph_generator.visualization import render_cotree_jpg
 
 
 def generate_all_cotree_structures(node_count: int, depth: int) -> Iterator[str]:
@@ -121,3 +122,30 @@ def generate_cographs_final_g6(
     os.remove(temp_filename)
 
     return output_filename
+
+def generate_cotree_images(
+    node_count: int,
+    output_dir: str = "cotree_images"
+) -> int:
+    """
+    Generate JPG files for all canonical cotrees with the specified number of leaves.
+    Structures are produced by ``generate_all_cotree_structures`` and rendered by
+    ``render_cotree_jpg``.
+
+    Parameters
+    ----------
+    node_count : int
+        Number of leaves in the cotrees.
+    output_dir : str, optional
+        Directory where the JPG files will be saved.
+
+    Returns
+    -------
+    int
+        Total number of images generated.
+    """
+    total = 0
+    for structure in generate_all_cotree_structures(node_count, 0):
+        render_cotree_jpg(structure, node_count, output_dir)
+        total += 1
+    return total

@@ -1,0 +1,3 @@
+from cograph_generator.generator import generate_cotree_images
+
+generate_cotree_images(3)
