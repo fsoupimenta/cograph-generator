@@ -8,7 +8,6 @@ license = { file = "LICENSE" }
 authors = [
   { name = "Fernando Souza Pimenta" }
 ]
-
 keywords = ["cographs", "graph theory", "enumeration", "graph6", "combinatorics"]
 
 classifiers = [
@@ -23,3 +22,7 @@ classifiers = [
 dependencies = [
     "numpy>=1.24"
 ]
+
+[project.urls]
+homepage = "https://github.com/fsoupimenta/cograph-generator"
+repository = "https://github.com/fsoupimenta/cograph-generator"
