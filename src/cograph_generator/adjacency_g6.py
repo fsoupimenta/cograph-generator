@@ -5,74 +5,63 @@ import numpy as np
 
 _ADJ_CACHE: Dict[str, Tuple[np.ndarray, int]] = {}
 
+
 def _structure_to_adjacency_matrix(structure: str) -> List[List[int]]:
     """
     Convert a canonical cograph structure expression into its adjacency matrix.
 
-    A structure is a recursive expression using the operators:
-    - ``J`` : join (connect all nodes across substructures)
-    - ``U`` : disjoint union (no edges across substructures)
-
-    The atomic graph is represented by the symbol ``a``, corresponding
-    to a single isolated vertex.
-
-    Examples
-    --------
-    >>> _structure_to_adjacency_matrix("a")
-    [[0]]
-
-    >>> _structure_to_adjacency_matrix("U(a,a)")
-    [[0, 0],
-     [0, 0]]
-
-    >>> _structure_to_adjacency_matrix("J(U(a,a),a)")
-    [[0, 0, 1],
-     [0, 0, 1],
-     [1, 1, 0]]
-
-    Parameters
-    ----------
-    structure : str
-        The canonical cograph structure string, e.g. ``"J(U(a,a),a)"``.
-
-    Returns
-    -------
-    List[List[int]]
-        A square adjacency matrix as a nested Python list.
+    Valid expressions:
+    - "a"
+    - "U(expr1,expr2,...)"
+    - "J(expr1,expr2,...)"
     """
 
     def _parse(expr: str) -> Tuple[np.ndarray, int]:
-        # Cached result?
+        expr = expr.strip()
+
+        if not expr:
+            raise ValueError("Empty subexpression in cotree structure")
+
         if expr in _ADJ_CACHE:
             return _ADJ_CACHE[expr]
 
-        # Base case: atomic vertex
         if expr == "a":
             mat = np.zeros((1, 1), dtype=np.uint8)
             _ADJ_CACHE[expr] = (mat, 1)
             return mat, 1
 
-        # Operator is first char: J or U
+        if len(expr) < 4 or expr[1] != "(" or not expr.endswith(")"):
+            raise ValueError(f"Invalid cotree expression: {expr}")
+
         operator = expr[0]
+        if operator not in {"J", "U"}:
+            raise ValueError(f"Unknown operator '{operator}' in expression: {expr}")
 
-        # Extract content inside parentheses: "x,y,z"
-        content = expr[2:-1]
+        content = expr[2:-1].strip()
+        if not content:
+            raise ValueError(f"Operator '{operator}' with empty argument list: {expr}")
 
-        # Split at top-level commas
-        parts = []
+        parts: list[str] = []
         depth = 0
         last_split = 0
+
         for i, ch in enumerate(content):
             if ch == "(":
                 depth += 1
             elif ch == ")":
                 depth -= 1
             elif ch == "," and depth == 0:
-                parts.append(content[last_split:i])
+                part = content[last_split:i].strip()
+                if not part:
+                    raise ValueError(f"Empty subexpression in: {expr}")
+                parts.append(part)
                 last_split = i + 1
-        parts.append(content[last_split:])
 
-        # Recursively parse substructures
+        final_part = content[last_split:].strip()
+        if not final_part:
+            raise ValueError(f"Empty subexpression in: {expr}")
+        parts.append(final_part)
+
         parsed_subs = [_parse(part) for part in parts]
         sub_matrices = [m for (m, _) in parsed_subs]
         sub_sizes = [s for (_, s) in parsed_subs]
@@ -98,6 +87,7 @@ def _structure_to_adjacency_matrix(structure: str) -> List[List[int]]:
 
     result_matrix, _ = _parse(structure)
     return result_matrix.tolist()
+
 
 def _adjacency_matrix_to_g6(adjacency_matrix: List[List[int]]) -> str:
     """
@@ -163,6 +153,7 @@ def _adjacency_matrix_to_g6(adjacency_matrix: List[List[int]]) -> str:
         encoded_chunks.append(chr(current_chunk + 63))
 
     return prefix + "".join(encoded_chunks)
+
 
 def _structure_to_g6_optimized_worker(structure: str) -> str:
     """

@@ -1,33 +1,45 @@
 from __future__ import annotations
-import hashlib
+
 import os
 from typing import List, Tuple, Dict
 
+import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
 
+matplotlib.use("Agg")
 
-def generate_cotree_filename(serialized: str, leaf_count: int) -> str:
+
+def generate_cotree_filename(
+        leaf_count: int,
+        output_dir: str,
+) -> str:
     """
-    Generate a deterministic and compact filename for a cotree image.
+    Generate a sequential filename for a cotree image.
 
     Parameters
     ----------
-    serialized : str
-        Serialized cotree representation.
     leaf_count : int
         Number of leaves in the cotree.
+    output_dir : str
+        Directory where the image will be saved.
 
     Returns
     -------
     str
-        Deterministic file-base name derived from the cotree hash.
+        Deterministic sequential file-base name.
     """
-    digest = hashlib.md5(serialized.encode()).hexdigest()[:8]
-    return f"cotree_n{leaf_count}_{digest}"
+    existing = [
+        f for f in os.listdir(output_dir)
+        if f.startswith(f"cotree_n{leaf_count}_") and f.endswith(".jpg")
+    ]
+    index = len(existing) + 1
+    return f"cotree_n{leaf_count}_{index}"
 
 
-def parse_cotree(serialized: str) -> Tuple[List[Tuple[int, int]], Dict[int, str]]:
+def parse_cotree(
+        serialized: str,
+) -> Tuple[List[Tuple[int, int]], Dict[int, str], Dict[int, bool]]:
     """
     Parse a serialized cotree expression into edges and node labels.
 
@@ -41,12 +53,15 @@ def parse_cotree(serialized: str) -> Tuple[List[Tuple[int, int]], Dict[int, str]
     edges : list[tuple[int,int]]
         Edge list as (parent, child).
     labels : dict[int,str]
-        Mapping node_id → label.
+        Mapping node_id → label (internal nodes only).
+    is_leaf : dict[int,bool]
+        Mapping node_id → True if leaf.
     """
 
     node_id = 1
     edges: List[Tuple[int, int]] = []
     labels: Dict[int, str] = {}
+    is_leaf: Dict[int, bool] = {}
 
     def _split_args(s: str) -> List[str]:
         result, balance, current = [], 0, ""
@@ -69,7 +84,7 @@ def parse_cotree(serialized: str) -> Tuple[List[Tuple[int, int]], Dict[int, str]
         node_id += 1
 
         if expr == "a":
-            labels[current] = "a"
+            is_leaf[current] = True
             if parent is not None:
                 edges.append((parent, current))
             return 1
@@ -85,6 +100,7 @@ def parse_cotree(serialized: str) -> Tuple[List[Tuple[int, int]], Dict[int, str]
 
         total_leaves = sum(leaf_counts)
         labels[current] = f"{operator} ({total_leaves})"
+        is_leaf[current] = False
 
         if parent is not None:
             edges.append((parent, current))
@@ -92,15 +108,15 @@ def parse_cotree(serialized: str) -> Tuple[List[Tuple[int, int]], Dict[int, str]
         return total_leaves
 
     _parse(serialized)
-    return edges, labels
+    return edges, labels, is_leaf
 
 
 def hierarchy_layout(
-    graph: nx.Graph,
-    root: int = 1,
-    x_center: float = 0.5,
-    y_top: float = 1.0,
-    level_gap: float = 0.1,
+        graph: nx.Graph,
+        root: int = 1,
+        x_center: float = 0.5,
+        y_top: float = 1.0,
+        level_gap: float = 0.1,
 ) -> Dict[int, Tuple[float, float]]:
     """
     Compute hierarchical top-down coordinates for tree drawing.
@@ -112,9 +128,9 @@ def hierarchy_layout(
     root : int, optional
         Root node. Default is 1.
     x_center : float, optional
-        Horizontal center of the root. Default is 0.5.
+        Horizontal center of the root.
     y_top : float, optional
-        Vertical position of the root. Default is 1.0.
+        Vertical position of the root.
     level_gap : float, optional
         Vertical spacing between levels.
 
@@ -127,43 +143,44 @@ def hierarchy_layout(
     positions: Dict[int, Tuple[float, float]] = {}
     parent: Dict[int, int] = {}
 
-    def _dfs(node: int, depth: int, x_mid: float) -> float:
-        positions[node] = (x_mid, y_top - depth * level_gap)
-
+    def _dfs(node: int, depth: int, x_left: float = 0.0) -> float:
         children = list(graph.neighbors(node))
         if node in parent:
             children.remove(parent[node])
 
+        y = y_top - depth * level_gap
+
         if not children:
+            positions[node] = (x_left + 0.5, y)
             return 1.0
 
-        widths: List[Tuple[int, float]] = []
         total_width = 0.0
+        child_positions = []
 
         for child in children:
             parent[child] = node
-            w = _dfs(child, depth + 1, x_mid)
-            widths.append((child, w))
+            w = _dfs(child, depth + 1, x_left + total_width)
+            child_positions.append((child, total_width, w))
             total_width += w
 
-        x_start = x_mid - total_width / 2
-        cur = x_start
+        for child, offset, w in child_positions:
+            positions[child] = (
+                x_left + offset + w / 2,
+                y_top - (depth + 1) * level_gap
+            )
 
-        for child, w in widths:
-            positions[child] = (cur + w / 2, y_top - (depth + 1) * level_gap)
-            cur += w
-
+        positions[node] = (x_left + total_width / 2, y)
         return total_width
 
-    _dfs(root, 0, x_center)
+    _dfs(root, 0, 0.0)
     return positions
 
 
 def render_cotree_jpg(
-    serialized: str,
-    leaf_count: int,
-    output_dir: str = "cotree_images",
-    dpi: int = 150,
+        serialized: str,
+        leaf_count: int,
+        output_dir: str = "cotree_images",
+        dpi: int = 150,
 ) -> str:
     """
     Render a cotree into a JPG image using Matplotlib.
@@ -175,7 +192,7 @@ def render_cotree_jpg(
     leaf_count : int
         Number of leaves in the cotree.
     output_dir : str, optional
-        Output directory. Default is "cotree_images".
+        Output directory.
     dpi : int, optional
         Image resolution.
 
@@ -185,7 +202,7 @@ def render_cotree_jpg(
         Full path to the generated JPEG file.
     """
 
-    edges, labels = parse_cotree(serialized)
+    edges, labels, is_leaf = parse_cotree(serialized)
 
     graph = nx.Graph()
     for parent, child in edges:
@@ -193,23 +210,54 @@ def render_cotree_jpg(
 
     pos = hierarchy_layout(graph, root=1)
 
+    internal_nodes = [n for n, leaf in is_leaf.items() if not leaf]
+    leaf_nodes = [n for n, leaf in is_leaf.items() if leaf]
+
     plt.figure(figsize=(8, 5))
-    nx.draw(
+
+    nx.draw_networkx_edges(
+        graph,
+        pos,
+        width=1.2,
+        edge_color="#555555"
+    )
+
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        nodelist=internal_nodes,
+        node_size=1400,
+        node_color="#c9e6ff",
+        linewidths=1.4,
+        edgecolors="#333333"
+    )
+
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        nodelist=leaf_nodes,
+        node_size=500,
+        node_color="#eeeeee",
+        linewidths=1.0,
+        edgecolors="#777777"
+    )
+
+    nx.draw_networkx_labels(
         graph,
         pos,
         labels=labels,
-        node_size=1500,
-        node_color="#c9e6ff",
-        linewidths=1.4,
         font_size=9,
-        font_weight="bold",
-        with_labels=True,
+        font_weight="bold"
     )
 
-    os.makedirs(output_dir, exist_ok=True)
-    filename = generate_cotree_filename(serialized, leaf_count)
-    path = os.path.join(output_dir, f"{filename}.jpg")
+    images_dir = os.path.join(output_dir, f"cotree_images_{leaf_count}")
+    os.makedirs(images_dir, exist_ok=True)
 
+    filename = generate_cotree_filename(leaf_count, images_dir)
+    path = os.path.join(images_dir, f"{filename}.jpg")
+
+    plt.axis("off")
+    plt.tight_layout()
     plt.savefig(path, bbox_inches="tight", dpi=dpi)
     plt.close()
 

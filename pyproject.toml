@@ -1,13 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "cographgenerator"
-version = "0.1.0"
+name = "cograph-generator"
+version = "0.1.2"
 description = "A high-performance Python library for generating and manipulating cographs, with canonical structure parsing and graph6 encoding."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
+
 authors = [
-  { name = "Fernando Souza Pimenta" }
+  { name = "Fernando Souza Pimenta" },
+  { name = "Átila Arueira Jones" }
 ]
+
 keywords = ["cographs", "graph theory", "enumeration", "graph6", "combinatorics"]
 
 classifiers = [
@@ -26,5 +33,5 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/fsoupimenta/cograph-generator"
-repository = "https://github.com/fsoupimenta/cograph-generator"
+Homepage = "https://github.com/fsoupimenta/cograph-generator"
+Repository = "https://github.com/fsoupimenta/cograph-generator"

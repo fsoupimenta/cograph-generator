@@ -1,6 +1,6 @@
 from typing import Iterator, List
 
-from src.cograph_generator.utils import _generate_all_unique_integer_partitions, _generate_ordered_cartesian_product, \
+from .utils import _generate_all_unique_integer_partitions, _generate_ordered_cartesian_product, \
     _apply_cograph_operator_structure
 
 
@@ -51,6 +51,7 @@ def generate_connected_cotree_structures(node_count: int, depth: int = 0) -> Ite
         for combination in _generate_ordered_cartesian_product(child_streams):
             yield _apply_cograph_operator_structure(operator, list(combination))
 
+
 def _generate_structures_with_root(node_count: int, root_operator: str) -> Iterator[str]:
     """
     Internal helper that generates cotrees with a FIXED operator at depth 0.
@@ -72,6 +73,7 @@ def _generate_structures_with_root(node_count: int, root_operator: str) -> Itera
 
         for combination in _generate_ordered_cartesian_product(child_streams):
             yield _apply_cograph_operator_structure(operator, list(combination))
+
 
 def generate_all_cotree_structures(node_count: int, depth: int = 0) -> Iterator[str]:
     """
@@ -108,19 +110,13 @@ def generate_all_cotree_structures(node_count: int, depth: int = 0) -> Iterator[
         * all disconnected cotrees (root = 'U')
     """
 
-    # At depth 0, emit both possibilities: connected(J) and disconnected(U)
     if depth == 0:
-
-        # Stream connected ones (root = J)
         yield from generate_connected_cotree_structures(node_count, depth=0)
 
-        # Stream disconnected ones (root = U)
         yield from _generate_structures_with_root(node_count, root_operator="U")
 
         return
 
-    # Below depth 0, the connected version already covers the logic.
-    # This fallback is used only recursively when root was forced to 'U'.
     operator = "J" if (depth % 2 == 0) else "U"
 
     if node_count == 1:

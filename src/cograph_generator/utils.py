@@ -42,6 +42,7 @@ def _generate_all_unique_integer_partitions(n: int) -> List[Tuple[int, ...]]:
     backtrack(n, n, [], partitions)
     return partitions
 
+
 def _generate_ordered_cartesian_product(groups: List[List[str]]) -> Iterator[Tuple[str, ...]]:
     """
     Generate a Cartesian product from a list of groups while collapsing consecutive
@@ -96,6 +97,7 @@ def _generate_ordered_cartesian_product(groups: List[List[str]]) -> Iterator[Tup
 
     for combination in itertools.product(*optimized_groups):
         yield tuple(itertools.chain.from_iterable(combination))
+
 
 def _apply_cograph_operator_structure(operator: str, child_structures: List[str]) -> str:
     """
